@@ -3,74 +3,69 @@ class Registers:
     """Class to hold the registers of the CPU, and allow easy access to them individually and as pairs"""
 
     def __init__(self):
-        global a, b, c, d, e, f, h, l, sp, pc
-        a = 0
-        b = 0
-        c = 0
-        d = 0
-        e = 0
-        f = 0
-        h = 0
-        l = 0
-        pc = 0x0100
-        sp = 0xFFFE
+        self.a = 0
+        self.b = 0
+        self.c = 0
+        self.d = 0
+        self.e = 0
+        self.f = 0
+        self.h = 0
+        self.l = 0
+        self.pc = 0x0000
+        self.sp = 0xFFFE
 
     def getReg(self, reg):
-        global a, b, c, d, e, f, h, l, sp, pc
         return {
-                "a": a,
-                "b": b,
-                "c": c,
-                "d": d,
-                "e": e,
-                "f": f,
-                "h": h,
-                "l": l,
-                "pc": pc,
-                "sp": sp
+                "a": self.a,
+                "b": self.b,
+                "c": self.c,
+                "d": self.d,
+                "e": self.e,
+                "f": self.f,
+                "h": self.h,
+                "l": self.l,
+                "pc": self.pc,
+                "sp": self.sp
                 }[reg]
 
     def getPair(self, pair):
-        global a, b, c, d, e, f, h, l, sp, pc
         return {
-                "af": a << 8 | f,
-                "bc": b << 8 | c,
-                "de": d << 8 | e,
-                "hl": h << 8 | l
+                "af": self.a << 8 | self.f,
+                "bc": self.b << 8 | self.c,
+                "de": self.d << 8 | self.e,
+                "hl": self.h << 8 | self.l
                 }[pair]
 
     def setReg(self, reg, val):
-        global a, b, c, d, e, f, h, l, sp, pc
-
         if (reg == "a"):
-            a = val
+            self.a = val
 
         elif (reg == "b"):
-            b = val
+            self.b = val
 
         elif (reg == "c"):
-            c = val
+            self.c = val
 
         elif (reg == "d"):
-            d = val
+            self.d = val
 
         elif (reg == "e"):
-            e = val
+            self.e = val
 
         elif (reg == "f"):
-            f = val
+            self.f = val
 
         elif (reg == "h"):
-            h = val
+            self.h = val
 
         elif (reg == "l"):
-            l = val
+            self.l = val
 
         elif (reg == "sp"):
-            sp = val
+            self.sp = val
 
         elif (reg == "pc"):
-            pc = val
+            self.pc = val
 
 
 class CPU():
