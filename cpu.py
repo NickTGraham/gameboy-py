@@ -78,10 +78,12 @@ class CPU():
         self.rp = 0
         self.n = 0
         self.inst = 0
+        self.mem = Memory()
 
     def fetch(self):
-        pass
-        
+        self.inst = self.mem.read(self.reg.pc)
+        self.reg.pc = self.reg.pc + 1
+
     def setInst(self, byte):
         self.inst = byte
 
@@ -92,7 +94,26 @@ class CPU():
         self.n = self.inst #get n in the event it is needed.
 
     def execute(self):
-        pass
+        print(self.opcode, self.r, self.rp, self.n)
+
+
+class Memory():
+    """Class for reading and writing to the memory"""
+    def __init__(self):
+        self.mem = [0] * 0xFFFF #Create an array the size of the GameBoy's memory
+
+    def read(self, address):
+        if(address > 0xFFFF):
+            raise ValueError("Address out of memory")
+        else:
+            return self.mem[address]
+
+    def write(self, address, value):
+        if (address > 0xFFFF):
+            raise ValueError("Address out of memory")
+        else:
+            self.mem[address] = value
+
 x = Registers()
 cp = CPU()
 print(x.getReg("b"))
@@ -105,3 +126,12 @@ cp.setInst(34)
 print(cp.inst)
 cp.decode()
 print(cp.opcode)
+print(cp.mem.read(4))
+cp.mem.write(4, 140)
+print(cp.mem.read(4))
+
+for i in range(6):
+    cp.fetch()
+    cp.decode()
+    cp.execute()
+#print(m.read(0xFFFFF))
