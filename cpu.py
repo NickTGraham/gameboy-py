@@ -118,7 +118,7 @@ class CPU():
         self.n = self.inst #get n in the event it is needed.
 
     def execute(self):
-        #there are now switch case statements in python so...
+        #8-bit load instructions
         if(self.opcode == 1 and self.r != 0b110 and self.rb != 0b110): #load instruction r <- rp
             tmp = self.reg.getReg(self.rp)
             self.reg.setReg(self.r, tmp)
@@ -236,6 +236,99 @@ class CPU():
             self.mem.write(memaddr, tmp)
             memaddr = memaddr - 1
             self.reg.setPair("hl", memaddr)
+
+        #16 bit load instructions
+        elif(self.opcode == 0 and self.rp == 0b001 and self.r%2 == 0): #dd <- nn
+            if(self.r == 0b000):
+                pair = "bc"
+
+            elif(self.r == 0b010):
+                pair = "de"
+
+            elif(self.r == 0b100):
+                pair = "hl"
+
+            elif(self.r == 0b110):
+                pair = "sp"
+
+            self.fetch()
+            self.decode()
+            tmp = self.n
+            self.fetch()
+            self.decode()
+            tmp = tmp | (self.n << 8)
+
+            self.reg.setPair(pair, tmp)
+
+        elif(self.opcode == 3 and self.r == 0b111 and self.rp == 0b001): #SP <- HL
+            tmp = self.reg.getPair("hl")
+            self.reg.setPair("sp", tmp)
+
+        elif(self.opcode == 3 and self.rp == 0b101 and self.r%2 == 0): #mem[SP-1] <- ddH, mem[SP-2] <- ddL
+            memaddr = self.reg.getReg("sp")
+            if(self.r == 0b000):
+                pair = "bc"
+
+            elif(self.r == 0b010):
+                pair = "de"
+
+            elif(self.r == 0b100):
+                pair = "hl"
+
+            elif(self.r == 0b110):
+                pair = "af"
+
+            tmp = self.reg.getPair(pair)
+            low = tmp & 0b11111111
+            high = tmp >> 8
+
+            self.mem.write(memaddr - 1, high)
+            self.mem.write(memaddr - 2, low)
+            self.reg.setReg("sp", memaddr - 2)
+
+        elif(self.opcode == 3 and self.rp == 0b001 and self.r%2 == 0): #qqL <- mem[SP], qqH <- mem[SP+1], SP <- SP + 2
+            memaddr = self.reg.getReg("sp")
+            if(self.r == 0b000):
+                hreg == self.reg.RegB
+                lreg == self.reg.RegC
+
+            elif(self.r == 0b010):
+                hreg == self.reg.RegD
+                lreg == self.reg.RegE
+
+            elif(self.r == 0b100):
+                hreg == self.reg.RegH
+                lreg == self.reg.RegL
+
+            elif(self.r == 0b110):
+                hreg == self.reg.RegA
+                lreg == "f"
+
+            tmpL = self.mem.read(memaddr)
+            tmpH = self.mem.read(memaddr + 1)
+            self.reg.setReg(lreg, tmpL)
+            self.reg.setReg(hreg, tmpH)
+            self.reg.setReg("sp", memaddr - 2)
+
+        elif(self.opcode == 3 and self.r == 0b111 and self.rp == 0b000): #HL <- SP + e
+            self.fetch()
+            self.decode()
+            tmp = self.reg.getReg("sp") + self.n
+            self.reg.setPair("hl", tmp)
+
+        elif(self.opcode == 0 and self.r == 0b001 and self.rp == 0b000): #mem[nn] <- SPl, mem[nn+1] <-SPh
+            self.fetch()
+            self.decode()
+            memaddr = self.n
+            self.fetch()
+            self.decode()
+            memaddr = memaddr | (self.n << 8)
+
+            tmp = self.getReg("sp")
+            tmpL = tmp & 0b11111111
+            tmpH = tmp >> 8
+            self.mem.write(memaddr, tmpL)
+            self.mem.write(memaddr + 1, tmpH)
 
         print(self.opcode, self.r, self.rp, self.n)
 
