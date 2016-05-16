@@ -1,8 +1,16 @@
 
 class Registers:
     """Class to hold the registers of the CPU, and allow easy access to them individually and as pairs"""
-
     def __init__(self):
+        #Easy references to the binary representations of the address
+        self.RegA = 0b111 # 111
+        self.RegB = 0b000 # 000
+        self.RegC = 0b001 # 001
+        self.RegD = 0b010 # 010
+        self.RegE = 0b011 # 011
+        self.RegH = 0b100 # 100
+        self.RegL = 0b101 # 101
+
         self.a = 0 # 111
         self.b = 0 # 000
         self.c = 0 # 001
@@ -11,7 +19,7 @@ class Registers:
         self.f = 0 #
         self.h = 0 # 100
         self.l = 0 # 101
-        self.pc = 0x0000
+        self.pc = 0x0100
         self.sp = 0xFFFE
 
     def getReg(self, reg):
@@ -67,6 +75,22 @@ class Registers:
         elif (reg == "pc"):
             self.pc = val
 
+    def setPair(pair, val):
+        if (pair == "af"):
+            self.f = val & 0b11111111
+            self.a = val >> 8
+
+        elif (pair == "bc"):
+            self.c = val & 0b11111111
+            self.b = val >> 8
+
+        elif (pair == "de"):
+            self.e = val & 0b11111111
+            self.d = val >> 8
+
+        elif (pair == "hl"):
+            self.l = val & 0b11111111
+            self.h = val >> 8
 
 class CPU():
     """Class contains the overall CPU Structure, including decoding the instructions"""
@@ -95,9 +119,123 @@ class CPU():
 
     def execute(self):
         #there are now switch case statements in python so...
-        if(self.opcode == 1 and self.r != 0b110 and self.rb != 0b110): #load instruction
+        if(self.opcode == 1 and self.r != 0b110 and self.rb != 0b110): #load instruction r <- rp
             tmp = self.reg.getReg(self.rp)
             self.reg.setReg(self.r, tmp)
+
+        elif(self.opcode == 1 and self.rp == 0b110): # r <- mem[HL]
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.r, tmp)
+
+        elif(self.opcode == 1 and self.r == 0b110): #mem[HL] <- rp
+            memaddr = self.reg.getPair("hl")
+            tmp = self.reg.getReg(self.rp)
+            self.mem.write(memaddr, tmp)
+
+        elif(self.opcode == 0 and self.rp == 0b110 and self.r != 0b110): #r <- n
+            tmpreg = self.r
+            self.fetch() #pull next byte, updates PC along with it.
+            self.decode()
+            self.reg.setReg(tmpreg, self.n)
+
+        elif(self.opcode == 0 and self.r == 0b110 and self.rp == 0b110): #mem[HL] <- n
+            tmpreg = self.reg.getPair("hl")
+            self.fetch()
+            self.decode()
+            self.mem.write(tmpreg, self.n)
+
+        elif(self.opcode == 0 and self.r == 0b001 and self.rp == 0b010): #A <- mem[BC]
+            memaddr = self.reg.getPair("bc")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmp)
+
+        elif(self.opcode == 0 and self.r == 0b011 and selg.rp == 0b010): #A <- mem[DE]
+            memaddr = self.reg.getPair("de")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmp)
+
+        elif(self.opcode == 3 and self.r == 0b110 and self.rp == 0b010): #A <- mem[0xFF00 + C]
+            memaddr = self.reg.getReg(self.reg.RegC) + 0xFF00
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmp)
+
+        elif(self.opcode == 3 and self.r == 0b100 and self.rp == 0b010): #mem[0xFF00 + C] <- A
+            memaddr = self.reg.getReg(self.reg.RegC) + 0xFF00
+            tmp = self.reg.getReg(self.reg.RegA)
+            self.mem.write(memaddr, tmp)
+
+        elif(self.opcode == 3 and self.r == 0b110  and self.rp == 0b000): #A <- mem[n]
+            self.fetch()
+            self.decode()
+            tmp = self.mem.read(self.n)
+            self.reg.setReg(self.reg.RegA, tmp)
+
+        elif(self.opcode == 3 and self.r == 0b100 and self.rp == 0b000): #mem[n] <- A
+            self.fetch()
+            self.decode()
+            tmp = self.reg.getReg(self.reg.RegA)
+            memaddr = 0xFF00 + self.n #this only writes into mem >= 0xFF00
+            self.mem.write(memaddr, tmp)
+
+
+        elif(self.opcode == 3 and self.r == 0b111 and self.rp == 0b010): #A <- mem[nn]
+            self.fetch()
+            self.decode()
+            memaddr = self.n << 8
+            self.fetch()
+            self.decode()
+            memaddr = memaddr + self.n
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmp)
+
+        elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b010): #mem[nn] <- A
+            self.fetch()
+            self.decode()
+            memaddr = self.n << 8
+            self.fetch()
+            self.decode()
+            memaddr = memaddr + self.n
+            tmp = self.getReg(self.reg.RegA)
+            self.mem.write(memaddr, tmp)
+
+        elif(self.opcode == 0 and self.r == 0b101 and self.rp == 0b010): #A <- mem[HL], HL = HL + 1
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmp)
+            memaddr = memaddr + 1
+            self.reg.setPair("hl", memaddr)
+
+        elif(self.opcode == 0 and self.r == 0b111 and self.rp == 0b010): #A <- mem[HL], HL = HL - 1
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmp)
+            memaddr = memaddr - 1
+            self.reg.setPair("hl", memaddr)
+
+        elif(self.opcode == 0 and self.r == 0b000 and self.rp == 0b010): #mem[BC] <- A
+            memaddr = self.reg.getPair("bc")
+            tmp = self.reg.getReg(self.reg.RegA)
+            self.mem.write(memaddr, tmp)
+
+        elif(self.opcode == 0 and self.r == 0b010 and self.rp == 0b010): #mem[DE] <- A
+            memaddr = self.reg.getPair("de")
+            tmp = self.reg.getReg(self.reg.RegA)
+            self.mem.write(memaddr, tmp)
+
+        elif(self.opcode == 0 and self.r == 0b100 and self.rp == 0b010): #mem[HL] <- A, HL = HL + 1
+            memaddr = self.reg.getPair("hl")
+            tmp = self.reg.getReg(self.reg.RegA)
+            self.mem.write(memaddr, tmp)
+            memaddr = memaddr + 1
+            self.reg.setPair("hl", memaddr)
+
+        elif(self.opcode == 0 and self.r == 0b110 and self.rp == 0b010): #mem[HL] <- A, HL = HL - 1
+            memaddr = self.reg.getPair("hl")
+            tmp = self.reg.getReg(self.reg.RegA)
+            self.mem.write(memaddr, tmp)
+            memaddr = memaddr - 1
+            self.reg.setPair("hl", memaddr)
 
         print(self.opcode, self.r, self.rp, self.n)
 
@@ -131,11 +269,11 @@ cp.setInst(34)
 print(cp.inst)
 cp.decode()
 print(cp.opcode)
-print(cp.mem.read(4))
-cp.mem.write(4, 140)
-print(cp.mem.read(4))
+print(cp.mem.read(258))
+cp.mem.write(258, 140)
+print(cp.mem.read(258))
 
-for i in range(6):
+for i in range(6): #instructions start at 256
     cp.fetch()
     cp.decode()
     cp.execute()
