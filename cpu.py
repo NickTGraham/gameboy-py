@@ -113,7 +113,7 @@ class CPU():
 
     def decode(self):
         self.opcode = (self.inst & 0xc0) >> 6 #get bits 7 and 6 to find opcode
-        self.r = (self.inst & 0x38) #get bits 5, 4, and 3
+        self.r = (self.inst & 0x38) >> 3 #get bits 5, 4, and 3
         self.rp = (self.inst & 0x07) #get first 3 bits
         self.n = self.inst #get n in the event it is needed.
 
@@ -330,6 +330,118 @@ class CPU():
             self.mem.write(memaddr, tmpL)
             self.mem.write(memaddr + 1, tmpH)
 
+        #8 bit arithmatic operations
+
+        elif(self.opcode == 2 and self.r == 0b000 and self.rp != 0b110): #A <- A + rp
+            regA = self.reg.getReg(self.regA)
+            tmp = self.reg.getReg(self.rp)
+            self.reg.setReg(self.reg.RegA, tmp + regA)
+
+        elif(self.opcode == 3 and self.r == 0b000 and self.rp == 0b110): #A <- A + n
+            self.fetch()
+            self.decode()
+            tmpA = self.getReg(self.RegA)
+            tmp = self.n
+            self.reg.setReg(self.RegA, tmpA + tmp)
+
+        elif(self.opcode == 2 and self.r == 0b000 and self.r == 0b110): #A <- A + mem[HL]
+            memaddr = self.reg.getPair("hl")
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA + tmp)
+
+        elif(self.opcode == 2 and self.r == 0b001 and self.rp != 0b110): #A <- A + rp + CY
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.reg.getReg(self.rp)
+            CY = self.reg.cy #TODO: Implement this...
+            self.reg.setReg(self.reg.RegA, tmpA + tmp + CY)
+
+        elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b110): #A <- A + n + CY
+            tmpA = self.reg.getReg(self.reg.RegA)
+            CY = self.reg.cy #TODO: Implement this...
+            self.fetch()
+            self.decode()
+            self.reg.setReg(self.reg.RegA, A + self.n + CY)
+
+        elif(self.opcode == 2 and self.r == 0b001 and self.rp == 0b110): #A <- A + mem[HL] + CY
+            tmpA = self.reg.getReg(self.reg.RegA)
+            CY = self.reg.cy #TODO: Implement this...
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA + tmp + CY)
+
+        elif(self.opcode == 2 and self.r == 0b010 and self.rp != 0b110): #A <- A - rp
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.reg.getReg(self.rp)
+            self.reg.setReg(self.reg.RegA, tmpA + tmp)
+
+        elif(self.opcode == 3 and self.r == 0b010 and self.rp == 0b110): #A <- A - n
+            tmpA = self.reg.getReg(self.reg.RegA)
+            self.fetch()
+            self.decode()
+            self.reg.setReg(self.reg.RegA, tmpA - self.n)
+
+        elif(self.opcode == 2 and self.r == 0b010 and self.rp == 0b110): #A <- A - mem[HL]
+            tmpA = self.reg.getReg(self.reg.RegA)
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA - tmp)
+
+        elif(self.opcode == 2 and self.r == 0b011 and self.rp != 0b110): #A <- A - rp - CY
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.reg.getReg(self.rp)
+            CY = self.reg.cy
+            self.reg.setReg(self.reg.RegA, tmpA - tmp - CY)
+
+        elif(self.opcode == 3 and self.r == 0b011 and self.rp == 0b110): #A <- A - n - CY
+            tmpA = self.reg.getReg(self.reg.RegA)
+            CY = self.reg.cy
+            self.fetch()
+            self.decode()
+            self.self.setReg(self.reg.RegA, tmpA - self.n - CY)
+
+        elif(self.opcode == 2 and self.r == 0b011 and self.rp == 0b110): #A <- A - mem[HL] - CY
+            tmpA = self.reg.getReg(self.reg.RegA)
+            CY = self.reg.cy
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA - tmp - CY)
+
+        elif(self.opcode == 2 and self.r == 0b100 and self.rp != 0b110): #A <- A & rp
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.reg.getReg(self.rp)
+            self.reg.setReg(self.reg.RegA, tmpA & tmp)
+
+        elif(self.opcode == 3 and self.r == 0b100 and self.rp == 0b110): #A <- A & n
+            tmpA = self.reg.getReg(self.reg.RegA)
+            self.fetch()
+            self.decode()
+            self.reg.setReg(self.reg.RegA, tmpA & self.n)
+
+        elif(self.opcode == 2 and self.r == 0b100 and self.rp == 0b110): #A <- A & mem[HL]
+            tmpA = self.reg.getReg(self.reg.RegA)
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA & tmp)
+
+        elif(self.opcode == 2 and self.r == 0b110 and self.rp != 0b110): #A <- A | rp
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.reg.getReg(self.rp)
+            self.reg.setReg(self.reg.RegA, tmpA | tmp)
+
+        elif(self.opcode == 3 and self.r == 0b110 and self.rp == 0b110): #A <- A | n
+            tmpA = self.reg.getReg(self.reg.RegA)
+            self.fetch()
+            self.decode()
+            self.reg.setReg(self.reg.RegA, tmpA | self.n)
+
+        elif(self.opcode == 2 and self.r == 0b110 and self.rp == 0b110): #A <- A | mem[HL]
+            tmpA = self.reg.getReg(self.reg.RegA)
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA | tmp)
+
+        
         print(self.opcode, self.r, self.rp, self.n)
 
 
