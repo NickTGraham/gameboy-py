@@ -22,6 +22,8 @@ class Registers:
         self.pc = 0x0100
         self.sp = 0xFFFE
 
+        self.cy = 0
+
     def getReg(self, reg):
         return {
                 0b111: self.a,
@@ -76,7 +78,7 @@ class Registers:
         elif (reg == "pc"):
             self.pc = val
 
-    def setPair(pair, val):
+    def setPair(self, pair, val):
         if (pair == "af"):
             self.f = val & 0b11111111
             self.a = val >> 8
@@ -493,6 +495,51 @@ class CPU():
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
             self.mem.write(memaddr, tmp - 1)
+
+        #16 bit arithmatic operations
+        elif(self.opcode == 0 and self.r % 2 == 1 and self.rp == 0b001): #HL <- HL + ss
+            tmpHL = self.reg.getPair("hl")
+            if(self.r == 0b001):
+                tmp = self.reg.getPair("bc")
+            elif(self.r == 0b011):
+                tmp = self.reg.getPair("de")
+            elif(self.r == 0b101):
+                tmp = self.reg.getPair("hl")
+            elif(self.r == 0b111):
+                tmp = self.reg.getPair("sp")
+            self.reg.setPair("hl", tmpHL + tmp)
+
+        elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b000): #SP <- SP + n
+            tmpSL = self.reg.getReg("sp")
+            self.fetch()
+            self.decode()
+            self.reg.setPair("sp", tmpSL + self.n)
+
+        elif(self.opcode == 0 and self.r%2 == 0 and self.rp == 0b011): #ss <- ss + 1
+            if(self.r == 0b000):
+                pair = "bc"
+            elif(self.r == 0b010):
+                pair = "de"
+            elif(self.r == 0b100):
+                pair = "hl"
+            elif(self.r == 0b110):
+                pair = "sp"
+
+            tmp = self.reg.getPair(pair)
+            self.reg.setPair(pair, tmp + 1)
+
+        elif(self.opcode == 0 and self.r%2 == 1 and self.rp == 0b011): #ss <- ss - 1
+            if(self.r == 0b001):
+                pair = "bc"
+            elif(self.r == 0b011):
+                pair = "de"
+            elif(self.r == 0b101):
+                pair = "hl"
+            elif(self.r == 0b111):
+                pair = "sp"
+
+            tmp = self.reg.getPair(pair)
+            self.reg.setPair(pair, tmp - 1)
         
         print(self.opcode, self.r, self.rp, self.n)
 
@@ -529,6 +576,10 @@ print(cp.opcode)
 print(cp.mem.read(258))
 cp.mem.write(258, 140)
 print(cp.mem.read(258))
+
+cp.setInst(0b11101000)
+cp.decode()
+cp.execute()
 
 for i in range(6): #instructions start at 256
     cp.fetch()
