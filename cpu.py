@@ -41,7 +41,8 @@ class Registers:
                 "af": self.a << 8 | self.f,
                 "bc": self.b << 8 | self.c,
                 "de": self.d << 8 | self.e,
-                "hl": self.h << 8 | self.l
+                "hl": self.h << 8 | self.l,
+                "sp": self.sp
                 }[pair]
 
     def setReg(self, reg, val):
@@ -441,6 +442,57 @@ class CPU():
             tmp = self.mem.read(memaddr)
             self.reg.setReg(self.reg.RegA, tmpA | tmp)
 
+        elif(self.opcode == 2  and self.r == 0b101 and self.rp != 0b110): #A <- A xor rp
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp = self.reg.getReg(self.rp)
+            self.reg.setReg(self.reg.RegA, tmpA ^ tmp)
+
+        elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b110): #A <- A xor n
+            tmpA = self.reg.getReg(self.reg.RegA)
+            self.fetch()
+            self.decode()
+            self.reg.setReg(self.reg.RegA, tmpA ^ self.n)
+
+        elif(self.opcode == 2 and self.r == 0b101 and self.rp == 0b110): #A <- A xor mem[HL]
+            tmpA = self.reg.getReg(self.reg.RegA)
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.reg.setReg(self.reg.RegA, tmpA ^ tmp)
+
+        elif(self.opcode == 2 and self.r == 0b111 and self.rp != 0b110): #A == rp
+            tmpA = self.reg.getReg(self.reg.RegA)
+            tmp == self.reg.getReg(self.rp)
+            #TODO: I need to set flags here, which I don't have set up
+
+        elif(self.opcode == 3 and self.r == 0b111 and self.rp == 0b110): #A == n
+            tmpA == self.reg.getReg(self.reg.RegA)
+            self.fetch()
+            self.decode()
+            #TODO: Setting flags
+
+        elif(self.opcode == 2 and self.r == 0b111 and self.rp == 0b110): #A == mem[HL]
+            tmpA == self.reg.getReg(self.reg.RegA)
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            #TODO: Setting flags
+
+        elif(self.opcode == 0 and self.r != 0b110 and self.rp == 0b100): #r <- r + 1
+            tmp == self.reg.getReg(self.r)
+            self.reg.setReg(self.r, tmp + 1)
+
+        elif(self.opcode == 0 and self.r == 0b110 and self.rp == 0b100): #mem[HL] <- mem[HL] + 1
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.mem.write(memaddr, tmp + 1)
+
+        elif(self.opcode == 0 and self.r != 0b110 and self.rp == 0b101): #r <- r - 1
+            tmp == self.reg.getReg(self.r)
+            self.reg.setReg(self.r, tmp - 1)
+
+        elif(self.opcode == 0 and self.r == 0b110 and self.rp == 0b101): #mem[HL] <- mem[HL] - 1
+            memaddr = self.reg.getPair("hl")
+            tmp = self.mem.read(memaddr)
+            self.mem.write(memaddr, tmp - 1)
         
         print(self.opcode, self.r, self.rp, self.n)
 
