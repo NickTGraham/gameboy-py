@@ -552,7 +552,7 @@ class CPU():
         elif(self.opcode == 0 and self.r == 0b010 and self.rp == 0b111): #A << 1 + A[7]
             tmpA = self.reg.getReg(self.reg.RegA)
             bit = (tmpA & 0b10000000) >> 7
-            tmpA = (tmpA << 1) + self.reg.cy
+            tmpA = (tmpA << 1) | self.reg.cy
             self.reg.cy = bit
             self.reg.setReg(self.reg.RegA, tmpA)
 
@@ -566,9 +566,127 @@ class CPU():
         elif(self.opcode == 0 and self.r == 0b011 and self.rp == 0b111): #A >> 1 + (A[0] << 7)
             tmpA = self.reg.getReg(self.reg.RegA)
             bit = tmpA & 0b01
-            tmpA = (tmpA << 1) + (self.reg.cy << 7)
+            tmpA = (tmpA >> 1) | (self.reg.cy << 7)
             self.reg.cy = bit
             self.reg.setReg(self.reg.RegA, tmpA)
+
+        elif(self.opcode == 3 and self.r == 0b001 and self.rp = 0b011): #rshifts of r or (HL)
+            self.fetch()
+            self.decode()
+            if(self.r == 0b000):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bit = (tmp & 0b10000000) >> 7
+                    tmp = (tmp << 1) | bit
+                    self.reg.cy = bit
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    bit = (tmp & 0b10000000) >> 7
+                    tmp = (tmp << 1) | bit
+                    self.reg.cy = bit
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b010):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bit = (tmp & 0b10000000) >> 7
+                    tmp = (tmp << 1) | self.reg.cy
+                    self.reg.cy = bit
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    bit = (tmp & 0b10000000) >> 7
+                    tmp = (tmp << 1) | self.reg.cy
+                    self.reg.cy = bit
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b001):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bit = (tmp & 0b01)
+                    tmp = (tmp >> 1) | (bit << 7)
+                    self.reg.cy = bit
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    bit = tmp & 0b01
+                    tmp = (tmp >> 1) | (bit << 7)
+                    self.reg.cy = bit
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b011):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bit = (tmp & 0b01)
+                    tmp = (tmp >> 1) | (self.reg.cy << 7)
+                    self.reg.cy = bit
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl") #NOTE: so this is not what the manual said the opcode was, but the manual seems wrong. so if there weird issues later it could be this
+                    tmp = self.mem.read(memaddr)
+                    bit = tmp & 0b01
+                    tmp = (tmp >> 1) | (self.reg.cy << 7)
+                    self.reg.cy = bit
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b100):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bit = (tmp & 0b10000000) >> 7
+                    tmp = (tmp << 1)
+                    self.reg.cy = bit
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    bit = (tmp & 0b10000000) >> 7
+                    tmp = (tmp << 1)
+                    self.reg.cy = bit
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b101):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bitL = (tmp & 0b01)
+                    bitH = tmp & 0b10000000
+                    tmp = (tmp >> 1) | bitH
+                    self.reg.cy = bitL
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    bitL = tmp & 0b01
+                    bitH = tmp & 0b10000000
+                    tmp = (tmp >> 1) | bitH
+                    self.reg.cy = bitL
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b111):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    bit = (tmp & 0b01)
+                    tmp = (tmp >> 1)
+                    self.reg.cy = bit
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    bit = tmp & 0b01
+                    tmp = (tmp >> 1)
+                    self.reg.cy = bit
+                    self.mem.write(memaddr, tmp)
+            elif(self.r == 0b110):
+                if(self.rp != 0b110):
+                    tmp = self.reg.getReg(self.rp)
+                    low4 = (tmp & 0b01111)
+                    high4 = (tmp & 0b11110000)
+                    tmp = (low4 << 4) | (high4 >> 4)
+                    self.reg.setReg(self.rp, tmp)
+                else:
+                    memaddr = self.reg.getPair("hl")
+                    tmp = self.mem.read(memaddr)
+                    low4 = (tmp & 0b01111)
+                    high4 = (tmp & 0b11110000)
+                    tmp = (low4 << 4) | (high4 >> 4)
+                    self.mem.write(memaddr, tmp)
         
         print(self.opcode, self.r, self.rp, self.n)
 
