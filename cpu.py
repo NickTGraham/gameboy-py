@@ -809,6 +809,55 @@ class CPU():
                 elif(self.r == 0b111):
                     tmp = tmp & 0b01111111
                 self.mem.write(memaddr, tmp)
+
+        #jump instructions
+        elif(self.opcode == 3 and self.r == 0b000 and self.rp == 0b011): #PC <- nn
+            self.fetch()
+            self.decode()
+            addr = self.n
+            self.fetch()
+            self.decode()
+            addr = (self.n << 8) | addr
+            self.reg.pc = addr
+
+        elif(self.opcode == 3 and self.r < 4 and self.rp == 0b010): #conditional jump
+            cond = self.r
+            self.fetch()
+            self.decode()
+            addr = self.n
+            self.fetch()
+            self.decode()
+            addr = (self.n << 8) | addr
+            if(cond == 0b000 and self.reg.z == 0):
+                self.reg.pc = addr
+            elif(cond == 0b001 and self.reg.z == 1):
+                self.reg.pc = addr
+            elif(cond == 0b010 and self.reg.cy == 0):
+                self.reg.pc = addr
+            elif(cond == 0b011 and self.reg.cy == 1):
+                self.reg.pc = addr
+
+        elif(self.opcode == 0 and self.r == 0b011 and self.rp == 0b000): #relative jump PC <- PC + e
+            self.fetch()
+            self.decode()
+            self.reg.pc = self.reg.pc + self.n + 1 #NOTE: I do not know if I need the one there
+
+        elif(self.opcode == 0 and self.r > 3 and self.rp == 0b000): #conditional jump
+            cond = self.r
+            self.fetch()
+            self.decode()
+            if(cond == 0b000 and self.reg.z == 0):
+                self.reg.pc = self.reg.pc + self.n
+            elif(cond == 0b001 and self.reg.z == 1):
+                self.reg.pc = self.reg.pc + self.n
+            elif(cond == 0b010 and self.reg.cy == 0):
+                self.reg.pc = self.reg.pc + self.n
+            elif(cond == 0b011 and self.reg.cy == 1):
+                self.reg.pc = self.reg.pc + self.n
+
+        elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b001): #jump to mem[HL]
+            memaddr = self.reg.getPair("hl")
+            self.reg.pc = self.mem.read(memaddr)
         
         print(self.opcode, self.r, self.rp, self.n)
 
