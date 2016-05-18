@@ -687,6 +687,128 @@ class CPU():
                     high4 = (tmp & 0b11110000)
                     tmp = (low4 << 4) | (high4 >> 4)
                     self.mem.write(memaddr, tmp)
+
+        #Bit operations
+        elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b011):
+            self.fetch()
+            self.decode()
+            if(self. opcode == 1 and self.rp != 0b110): #move selected bit to the Zero flags
+                tmp = self.reg.getReg(self.rp)
+                if(self.r == 0b000):
+                    bit = tmp & 0b00000001
+                elif(self.r == 0b001):
+                    bit = (tmp & 0b00000010) >> 1
+                elif(self.r == 0b010):
+                    bit = (tmp & 0b00000100) >> 2
+                elif(self.r == 0b011):
+                    bit = (tmp & 0b00001000) >> 3
+                elif(self.r == 0b100):
+                    bit = (tmp & 0b00010000) >> 4
+                elif(self.r == 0b101):
+                    bit = (tmp & 0b00100000) >> 5
+                elif(self.r == 0b110):
+                    bit = (tmp & 0b01000000) >> 6
+                elif(self.r == 0b111):
+                    bit = (tmp & 0b10000000) >> 7
+                self.reg.z = bit #TODO: implement this...
+            elif(self.opcode == 1 and self.rp == 0b110): #move selected bit to the Zero flags
+                memaddr = self.reg.getPair("hl")
+                tmp = self.mem.read(memaddr)
+                if(self.r == 0b000):
+                    bit = tmp & 0b00000001
+                elif(self.r == 0b001):
+                    bit = (tmp & 0b00000010) >> 1
+                elif(self.r == 0b010):
+                    bit = (tmp & 0b00000100) >> 2
+                elif(self.r == 0b011):
+                    bit = (tmp & 0b00001000) >> 3
+                elif(self.r == 0b100):
+                    bit = (tmp & 0b00010000) >> 4
+                elif(self.r == 0b101):
+                    bit = (tmp & 0b00100000) >> 5
+                elif(self.r == 0b110):
+                    bit = (tmp & 0b01000000) >> 6
+                elif(self.r == 0b111):
+                    bit = (tmp & 0b10000000) >> 7
+                self.reg.z = bit #TODO: implement this...
+            elif(self.opcode == 3 and self.rp != 0.110): #set bit to 1
+                tmp = self.reg.getReg(self.rp)
+                if(self.r == 0b000):
+                    tmp = tmp | 0b00000001
+                elif(self.r == 0b001):
+                    tmp = tmp | 0b00000010
+                elif(self.r == 0b010):
+                    tmp = tmp | 0b00000100
+                elif(self.r == 0b011):
+                    tmp = tmp | 0b00001000
+                elif(self.r == 0b100):
+                    tmp = tmp | 0b00010000
+                elif(self.r == 0b101):
+                    tmp = tmp | 0b00100000
+                elif(self.r == 0b110):
+                    tmp = tmp | 0b01000000
+                elif(self.r == 0b111):
+                    tmp = tmp | 0b10000000
+                self.reg.setReg(self.rp, tmp)
+            elif(self.opcode == 3 and self.rp == 0b110): #set bit to 1
+                memaddr = self.reg.getPair("hl")
+                tmp = self.mem.read(memaddr)
+                if(self.r == 0b000):
+                    tmp = tmp | 0b00000001
+                elif(self.r == 0b001):
+                    tmp = tmp | 0b00000010
+                elif(self.r == 0b010):
+                    tmp = tmp | 0b00000100
+                elif(self.r == 0b011):
+                    tmp = tmp | 0b00001000
+                elif(self.r == 0b100):
+                    tmp = tmp | 0b00010000
+                elif(self.r == 0b101):
+                    tmp = tmp | 0b00100000
+                elif(self.r == 0b110):
+                    tmp = tmp | 0b01000000
+                elif(self.r == 0b111):
+                    tmp = tmp | 0b10000000
+                self.mem.write(memaddr, tmp)
+            elif(self.opcode == 3 and self.rp != 0b110): #set bit to 0
+                tmp = self.reg.getReg(self.rp)
+                if(self.r == 0b000):
+                    tmp = tmp & 0b11111110
+                elif(self.r == 0b001):
+                    tmp = tmp & 0b11111101
+                elif(self.r == 0b010):
+                    tmp = tmp & 0b11111011
+                elif(self.r == 0b011):
+                    tmp = tmp & 0b11110111
+                elif(self.r == 0b100):
+                    tmp = tmp & 0b11101111
+                elif(self.r == 0b101):
+                    tmp = tmp & 0b11011111
+                elif(self.r == 0b110):
+                    tmp = tmp & 0b10111111
+                elif(self.r == 0b111):
+                    tmp = tmp & 0b01111111
+                self.reg.setReg(self.rp, tmp)
+            elif(self.opcode == 3 and self.rp == 0b110): #set bit to 0
+                memaddr = self.reg.getPair("hl")
+                tmp = self.mem.read(memaddr)
+                if(self.r == 0b000):
+                    tmp = tmp & 0b11111110
+                elif(self.r == 0b001):
+                    tmp = tmp & 0b11111101
+                elif(self.r == 0b010):
+                    tmp = tmp & 0b11111011
+                elif(self.r == 0b011):
+                    tmp = tmp & 0b11110111
+                elif(self.r == 0b100):
+                    tmp = tmp & 0b11101111
+                elif(self.r == 0b101):
+                    tmp = tmp & 0b11011111
+                elif(self.r == 0b110):
+                    tmp = tmp & 0b10111111
+                elif(self.r == 0b111):
+                    tmp = tmp & 0b01111111
+                self.mem.write(memaddr, tmp)
         
         print(self.opcode, self.r, self.rp, self.n)
 
