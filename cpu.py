@@ -842,7 +842,7 @@ class CPU():
             self.decode()
             self.reg.pc = self.reg.pc + self.n + 1 #NOTE: I do not know if I need the one there
 
-        elif(self.opcode == 0 and self.r > 3 and self.rp == 0b000): #conditional jump
+        elif(self.opcode == 0 and self.r > 3 and self.rp == 0b000): #conditional relative jump
             cond = self.r
             self.fetch()
             self.decode()
@@ -858,6 +858,132 @@ class CPU():
         elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b001): #jump to mem[HL]
             memaddr = self.reg.getPair("hl")
             self.reg.pc = self.mem.read(memaddr)
+
+        #Call and Return instructions
+        elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b101): #mem[SP - 1, - 2] <- PC, PC <- nn, SP <- SP - 2
+            memaddr = self.reg.getReg("sp")
+            self.mem.write(memaddr - 1, (self.pc & 0b1111111100000000) >> 8)
+            self.mem.write(memaddr - 2, (self.pc & 0b11111111))
+            self.reg.setReg("sp", memaddr - 2)
+            self.fetch()
+            self.decode()
+            tmp = self.n
+            self.fetch()
+            self.decode()
+            tmp = tmp | (self.n << 8)
+            self.pc = tmp
+
+        elif(self.opcode == 3 and self.r < 4 and self.rp == 0b100): #conditional Call
+            if(cond == 0b000 and self.reg.z == 0):
+                memaddr = self.reg.getReg("sp")
+                self.mem.write(memaddr - 1, (self.pc & 0b1111111100000000) >> 8)
+                self.mem.write(memaddr - 2, (self.pc & 0b11111111))
+                self.reg.setReg("sp", memaddr - 2)
+                self.fetch()
+                self.decode()
+                tmp = self.n
+                self.fetch()
+                self.decode()
+                tmp = tmp | (self.n << 8)
+                self.pc = tmp
+            elif(cond == 0b001 and self.reg.z == 1):
+                memaddr = self.reg.getReg("sp")
+                self.mem.write(memaddr - 1, (self.pc & 0b1111111100000000) >> 8)
+                self.mem.write(memaddr - 2, (self.pc & 0b11111111))
+                self.reg.setReg("sp", memaddr - 2)
+                self.fetch()
+                self.decode()
+                tmp = self.n
+                self.fetch()
+                self.decode()
+                tmp = tmp | (self.n << 8)
+                self.pc = tmp
+            elif(cond == 0b010 and self.reg.cy == 0):
+                memaddr = self.reg.getReg("sp")
+                self.mem.write(memaddr - 1, (self.pc & 0b1111111100000000) >> 8)
+                self.mem.write(memaddr - 2, (self.pc & 0b11111111))
+                self.reg.setReg("sp", memaddr - 2)
+                self.fetch()
+                self.decode()
+                tmp = self.n
+                self.fetch()
+                self.decode()
+                tmp = tmp | (self.n << 8)
+                self.pc = tmp
+            elif(cond == 0b011 and self.reg.cy == 1):
+                memaddr = self.reg.getReg("sp")
+                self.mem.write(memaddr - 1, (self.pc & 0b1111111100000000) >> 8)
+                self.mem.write(memaddr - 2, (self.pc & 0b11111111))
+                self.reg.setReg("sp", memaddr - 2)
+                self.fetch()
+                self.decode()
+                tmp = self.n
+                self.fetch()
+                self.decode()
+                tmp = tmp | (self.n << 8)
+                self.pc = tmp
+
+        elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b001): #Return PC <- mem[SP], SP <- SP + 2
+            memaddr = self.reg.getReg("sp")
+            tmpPC = self.mem.read(memaddr)
+            tmpPC = tmpPC | (self.mem.read(memaddr + 1) << 8)
+            self.reg.pc = tmpPC
+            self.reg.setReg("sp", memaddr + 2)
+
+        elif(self.opcode == 3 and self.r == 0b011 and self.rp == 0b001): #Return from Interupt PC <- mem[SP], SP <- SP + 2
+            memaddr = self.reg.getReg("sp")
+            tmpPC = self.mem.read(memaddr)
+            tmpPC = tmpPC | (self.mem.read(memaddr + 1) << 8)
+            self.reg.pc = tmpPC
+            self.reg.setReg("sp", memaddr + 2)
+
+        elif(self.opcode == 3 and self.r < 4 and self.rp == 0b000): #Conditional Return
+            if(cond == 0b000 and self.reg.z == 0):
+                memaddr = self.reg.getReg("sp")
+                tmpPC = self.mem.read(memaddr)
+                tmpPC = tmpPC | (self.mem.read(memaddr + 1) << 8)
+                self.reg.pc = tmpPC
+                self.reg.setReg("sp", memaddr + 2)
+            elif(cond == 0b001 and self.reg.z == 1):
+                memaddr = self.reg.getReg("sp")
+                tmpPC = self.mem.read(memaddr)
+                tmpPC = tmpPC | (self.mem.read(memaddr + 1) << 8)
+                self.reg.pc = tmpPC
+                self.reg.setReg("sp", memaddr + 2)
+            elif(cond == 0b010 and self.reg.cy == 0):
+                memaddr = self.reg.getReg("sp")
+                tmpPC = self.mem.read(memaddr)
+                tmpPC = tmpPC | (self.mem.read(memaddr + 1) << 8)
+                self.reg.pc = tmpPC
+                self.reg.setReg("sp", memaddr + 2)
+            elif(cond == 0b011 and self.reg.cy == 1):
+                memaddr = self.reg.getReg("sp")
+                tmpPC = self.mem.read(memaddr)
+                tmpPC = tmpPC | (self.mem.read(memaddr + 1) << 8)
+                self.reg.pc = tmpPC
+                self.reg.setReg("sp", memaddr + 2)
+
+        elif(self.opcode == 3 and self.rp == 0b111): #RST
+            memaddr = self.reg.getReg("sp")
+            self.mem.write(memaddr - 1, self.pc >> 8)
+            self.mem.wrtie(memaddr - 2, self.pc & 0b11111111)
+            self.reg.setReg("sp", memaddr - 2)
+            if(self.r == 0b000):
+                self.reg.pc = 0x00
+            elif(self. == 0b001):
+                self.reg.pc = 0x08
+            elif(self. == 0b010):
+                self.reg.pc = 0x10
+            elif(self. == 0b011):
+                self.reg.pc = 0x18
+            elif(self. == 0b100):
+                self.reg.pc = 0x20
+            elif(self. == 0b101):
+                self.reg.pc = 0x28
+            elif(self. == 0b110):
+                self.reg.pc = 0x30
+            elif(self. == 0b111):
+                self.reg.pc = 0x38
         
         print(self.opcode, self.r, self.rp, self.n)
 
