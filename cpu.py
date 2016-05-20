@@ -106,6 +106,7 @@ class CPU():
         self.n = 0
         self.inst = 0
         self.mem = Memory()
+        self.bcd = 0
 
     def fetch(self):
         self.inst = self.mem.read(self.reg.pc)
@@ -984,9 +985,72 @@ class CPU():
                 self.reg.pc = 0x30
             elif(self. == 0b111):
                 self.reg.pc = 0x38
+
+        #General Purpose Insructions
+        elif(self.opcode == 0 and self.r == 0b101 and self.rp == 0b111): #invert
+            tmp = self.reg.getReg(self.reg.RegA)
+            self.reg.setReg(self.reg.RegA, ~tmp)
+
+        elif(self.opcode == 0 and self.r == 0b000 and self.rp == 0b000): #NOP
+            pass
+
+        elif(self.opcode == 1 and self.r == 0b110 and self.rp == 0b110): #Halt
+            #Not finished... need to handle pushing pc
+            return -2
+
+        elif(self.opcode == 0 and self.r == 0b010 and self.rp == 0b000): #stop
+            #reset all the flags
+            self.fetch()
+            self.decode()
+            if(self.n == 0):
+                return -1
+
+        elif(self.opcode == 0 and self.r == 0b100 and self.rp == 0b111): #binary coded decimal adjustment
+            pass
         
+        self.prev = self.inst
         print(self.opcode, self.r, self.rp, self.n)
 
+    def BCDCalc(add, n, cy, h, A): #calculate what the BCD Result would be if needed. return A, CY
+        low == A & 0b1111
+        high == (A & 0b11110000) >> 4
+        if (add and n == 0): #must adjust the A value for addition
+            if(cy == 0 and h == 0):
+                if(high <= 0x9 and low <= 0x9):
+                    return A, 0
+                elif(high <= 0x8 and low >= 0xA):
+                    return A + 0x06, 0
+                elif(high >= 0xA and low <= 0x9):
+                    return A + 0x60, 1
+                elif(high >= 0x9 and low >= 0xA):
+                    return A + 0x66, 1
+            elif(cy == 0 and h == 1):
+                if(high <= 0x9 and low <= 0x3):
+                    return A + 0x06, 0
+                elif(high >= 0xA and low <= 0x03):
+                    return A + 0x66, 1
+            elif(cy == 1 and h == 0):
+                if(high < 0x2):
+                    if(low <= 0x9):
+                        return A + 0x06, 1
+                    else:
+                        return A + 0x66, 1
+            elif(cy == 1 and h == 1):
+                if(high <= 0x03 and low <= 0x03):
+                    return A + 0x66, 1
+
+        elif(not add and n == 1): #Adjust A for subtraction
+            if(cy == 0 and h == 0 and high <= 0x9 and low <= 0x9):
+                return A, 0
+            elif(cy == 0 and h == 1 and high <= 0x8 and low >= 0x6):
+                return A + 0xFA, 0
+            elif(cy == 1 and h == 0 and high >= 0x7 and low <= 0x9):
+                return A + 0xA, 1
+            elif(cy == 1 and h == 1 and high >= 0x6 and low >= 0x6):
+                return A + 0x9A, 1
+
+        #No adjustment
+        return A, cy
 
 class Memory():
     """Class for reading and writing to the memory"""
