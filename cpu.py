@@ -95,6 +95,42 @@ class Registers:
             self.l = val & 0b11111111
             self.h = val >> 8
 
+    def setFlag(self, flag, val):
+        if(flag == "z"):
+            mask = 0b01111111
+            tmp = self.f & mask
+            self.f = tmp | (val << 7)
+        elif(flag == "n"):
+            mask = 0b10111111
+            tmp = self.f & mask
+            self.f = tmp | (val << 6)
+        elif(flag == "h"):
+            mask = 0b11011111
+            tmp = self.f & mask
+            self.f = tmp | (val << 5)
+        elif(flag == "cy"):
+            mask = 0b11101111
+            tmp = self.f & mask
+            self.f = tmp | (val << 4)
+
+    def getFlag(self, flag):
+        if(flag == "z"):
+            mask = 0b10000000
+            tmp = self.f & mask
+            return tmp >> 7
+        elif(flag == "n"):
+            mask = 0b01000000
+            tmp = self.f & mask
+            return tmp >> 6
+        elif(flag == "h"):
+            mask = 0b00100000
+            tmp = self.f & mask
+            return tmp >> 5
+        elif(flag == "cy"):
+            mask = 0b00010000
+            tmp = self.f & mask
+            return tmp >> 4
+
 class CPU():
     """Class contains the overall CPU Structure, including decoding the instructions"""
 
@@ -107,6 +143,7 @@ class CPU():
         self.inst = 0
         self.mem = Memory()
         self.bcd = 0
+        self.bcdcy = 0
 
     def fetch(self):
         self.inst = self.mem.read(self.reg.pc)
@@ -571,7 +608,7 @@ class CPU():
             self.reg.cy = bit
             self.reg.setReg(self.reg.RegA, tmpA)
 
-        elif(self.opcode == 3 and self.r == 0b001 and self.rp = 0b011): #rshifts of r or (HL)
+        elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b011): #rshifts of r or (HL)
             self.fetch()
             self.decode()
             if(self.r == 0b000):
@@ -971,19 +1008,19 @@ class CPU():
             self.reg.setReg("sp", memaddr - 2)
             if(self.r == 0b000):
                 self.reg.pc = 0x00
-            elif(self. == 0b001):
+            elif(self.r == 0b001):
                 self.reg.pc = 0x08
-            elif(self. == 0b010):
+            elif(self.r == 0b010):
                 self.reg.pc = 0x10
-            elif(self. == 0b011):
+            elif(self.r == 0b011):
                 self.reg.pc = 0x18
-            elif(self. == 0b100):
+            elif(self.r == 0b100):
                 self.reg.pc = 0x20
-            elif(self. == 0b101):
+            elif(self.r == 0b101):
                 self.reg.pc = 0x28
-            elif(self. == 0b110):
+            elif(self.r == 0b110):
                 self.reg.pc = 0x30
-            elif(self. == 0b111):
+            elif(self.r == 0b111):
                 self.reg.pc = 0x38
 
         #General Purpose Insructions
@@ -1006,8 +1043,9 @@ class CPU():
                 return -1
 
         elif(self.opcode == 0 and self.r == 0b100 and self.rp == 0b111): #binary coded decimal adjustment
-            pass
-        
+            self.reg.setReg(self.reg.RegA, self.bcd)
+            self.reg.cy = self.bcdcy
+
         self.prev = self.inst
         print(self.opcode, self.r, self.rp, self.n)
 
