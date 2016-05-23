@@ -354,8 +354,16 @@ class CPU():
         elif(self.opcode == 3 and self.r == 0b111 and self.rp == 0b000): #HL <- SP + e
             self.fetch()
             self.decode()
-            tmp = self.reg.getReg("sp") + self.n
-            self.reg.setPair("hl", tmp)
+            tmp = self.reg.getReg("sp")
+            res = tmp  + self.n
+            self.reg.setPair("hl", res)
+            self.reg.setFlag('z', 0)
+            self.reg.setFlag('n', 0)
+            if((tmp >> 11) & 0b01 == (res >> 11) & 0b01):
+                self.reg.setFlag('h', 0) #carry from 11th bit...
+            else:
+                self.reg.setFlag('h', 1)
+            self.reg.setFlag('cy', (tmp & (1 << 16)) >> 16) #check for carry bit at end
 
         elif(self.opcode == 0 and self.r == 0b001 and self.rp == 0b000): #mem[nn] <- SPl, mem[nn+1] <-SPh
             self.fetch()
@@ -376,57 +384,136 @@ class CPU():
         elif(self.opcode == 2 and self.r == 0b000 and self.rp != 0b110): #A <- A + rp
             regA = self.reg.getReg(self.regA)
             tmp = self.reg.getReg(self.rp)
-            self.reg.setReg(self.reg.RegA, tmp + regA)
+            res = tmp + regA
+            self.reg.setReg(self.reg.RegA, res)
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            tmp4 = (tmp & 0b1000) >> 3
+            A4 = (regA & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ A4 ^ res4) #exclusive or the fourth bit s including result to find if their was a carry
+            self.reg.setFlag('cy', res >> 8)
 
         elif(self.opcode == 3 and self.r == 0b000 and self.rp == 0b110): #A <- A + n
             self.fetch()
             self.decode()
             tmpA = self.getReg(self.RegA)
             tmp = self.n
-            self.reg.setReg(self.RegA, tmpA + tmp)
+            res = tmpA + tmp
+            self.reg.setReg(self.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', res >> 8)
+            tmp4 = (tmp & 0b1000) >> 3
+            A4 = (regA & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ A4 ^ res4)
 
         elif(self.opcode == 2 and self.r == 0b000 and self.r == 0b110): #A <- A + mem[HL]
             memaddr = self.reg.getPair("hl")
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA + tmp)
+            res = tmp + tmpA
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', res >> 8)
+            tmp4 = (tmp & 0b1000) >> 3
+            A4 = (regA & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ A4 ^ res4)
 
         elif(self.opcode == 2 and self.r == 0b001 and self.rp != 0b110): #A <- A + rp + CY
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp = self.reg.getReg(self.rp)
-            CY = self.reg.cy #TODO: Implement this...
+            CY = self.reg.getFlag('cy')
+            res = tmpA + tmp + CY
             self.reg.setReg(self.reg.RegA, tmpA + tmp + CY)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', res >> 8)
+            tmp4 = (tmp & 0b1000) >> 3
+            A4 = (regA & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ A4 ^ res4)
 
         elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b110): #A <- A + n + CY
             tmpA = self.reg.getReg(self.reg.RegA)
-            CY = self.reg.cy #TODO: Implement this...
+            CY = self.reg.getFlag('cy')
             self.fetch()
             self.decode()
-            self.reg.setReg(self.reg.RegA, A + self.n + CY)
+            res = tmpA + self.n + CY
+            self.reg.setReg(self.reg.RegA, tmp)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', res >> 8)
+            tmp4 = (tmp & 0b1000) >> 3
+            A4 = (regA & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ A4 ^ res4)
+
 
         elif(self.opcode == 2 and self.r == 0b001 and self.rp == 0b110): #A <- A + mem[HL] + CY
             tmpA = self.reg.getReg(self.reg.RegA)
             CY = self.reg.cy #TODO: Implement this...
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA + tmp + CY)
+            res = tmpA + tmp + CY
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', res >> 8)
+            tmp4 = (tmp & 0b1000) >> 3
+            A4 = (regA & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ A4 ^ res4)
 
         elif(self.opcode == 2 and self.r == 0b010 and self.rp != 0b110): #A <- A - rp
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp = self.reg.getReg(self.rp)
-            self.reg.setReg(self.reg.RegA, tmpA + tmp)
+            res = tmpA - tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if (tmpA >> 7) == 0 and (tmp >> 7) == 1 else 0) #check for borrowing
+            tmp4 = (tmp & 0b100) >> 2
+            A4 = (regA & 0b100) >> 2
+            self.reg.setFlag('h', 1 if a4 == 0 and tmp4 == 1 else 0) #borrow from bit four
 
         elif(self.opcode == 3 and self.r == 0b010 and self.rp == 0b110): #A <- A - n
             tmpA = self.reg.getReg(self.reg.RegA)
             self.fetch()
             self.decode()
-            self.reg.setReg(self.reg.RegA, tmpA - self.n)
+            tmp = self.n
+            res = tmpA - tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if (tmpA >> 7) == 0 and (tmp >> 7) == 1 else 0) #check for borrowing
+            tmp4 = (tmp & 0b100) >> 2
+            A4 = (regA & 0b100) >> 2
+            self.reg.setFlag('h', 1 if a4 == 0 and tmp4 == 1 else 0) #borrow from bit four
 
         elif(self.opcode == 2 and self.r == 0b010 and self.rp == 0b110): #A <- A - mem[HL]
             tmpA = self.reg.getReg(self.reg.RegA)
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA - tmp)
+            res = tmpA - tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if (tmpA >> 7) == 0 and (tmp >> 7) == 1 else 0) #check for borrowing
+            tmp4 = (tmp & 0b100) >> 2
+            A4 = (regA & 0b100) >> 2
+            self.reg.setFlag('h', 1 if a4 == 0 and tmp4 == 1 else 0) #borrow from bit four
 
         elif(self.opcode == 2 and self.r == 0b011 and self.rp != 0b110): #A <- A - rp - CY
             tmpA = self.reg.getReg(self.reg.RegA)
@@ -436,98 +523,204 @@ class CPU():
 
         elif(self.opcode == 3 and self.r == 0b011 and self.rp == 0b110): #A <- A - n - CY
             tmpA = self.reg.getReg(self.reg.RegA)
-            CY = self.reg.cy
+            CY = self.reg.getFlag('cy')
             self.fetch()
             self.decode()
-            self.self.setReg(self.reg.RegA, tmpA - self.n - CY)
+            res = tmpA - self.n - CY
+            self.self.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if (tmpA >> 7) == 0 and (tmp >> 7) == 1 else 0) #check for borrowing
+            tmp4 = (tmp & 0b100) >> 2
+            A4 = (regA & 0b100) >> 2
+            self.reg.setFlag('h', 1 if a4 == 0 and tmp4 == 1 else 0) #borrow from bit four
 
         elif(self.opcode == 2 and self.r == 0b011 and self.rp == 0b110): #A <- A - mem[HL] - CY
             tmpA = self.reg.getReg(self.reg.RegA)
             CY = self.reg.cy
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA - tmp - CY)
+            res = tmpA - tmp - CY
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if (tmpA >> 7) == 0 and (tmp >> 7) == 1 else 0) #check for borrowing
+            tmp4 = (tmp & 0b100) >> 2
+            A4 = (regA & 0b100) >> 2
+            self.reg.setFlag('h', 1 if a4 == 0 and tmp4 == 1 else 0) #borrow from bit four
 
         elif(self.opcode == 2 and self.r == 0b100 and self.rp != 0b110): #A <- A & rp
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp = self.reg.getReg(self.rp)
-            self.reg.setReg(self.reg.RegA, tmpA & tmp)
+            res = tmpA & tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 1)
 
         elif(self.opcode == 3 and self.r == 0b100 and self.rp == 0b110): #A <- A & n
             tmpA = self.reg.getReg(self.reg.RegA)
             self.fetch()
             self.decode()
-            self.reg.setReg(self.reg.RegA, tmpA & self.n)
+            tmp = self.n
+            res = tmpA & tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 1)
 
         elif(self.opcode == 2 and self.r == 0b100 and self.rp == 0b110): #A <- A & mem[HL]
             tmpA = self.reg.getReg(self.reg.RegA)
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA & tmp)
+            res = tmpA & tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 1)
 
         elif(self.opcode == 2 and self.r == 0b110 and self.rp != 0b110): #A <- A | rp
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp = self.reg.getReg(self.rp)
-            self.reg.setReg(self.reg.RegA, tmpA | tmp)
+            res = tmpA | tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 0)
 
         elif(self.opcode == 3 and self.r == 0b110 and self.rp == 0b110): #A <- A | n
             tmpA = self.reg.getReg(self.reg.RegA)
             self.fetch()
             self.decode()
-            self.reg.setReg(self.reg.RegA, tmpA | self.n)
+            tmp = self.n
+            res = tmpA | tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 0)
 
         elif(self.opcode == 2 and self.r == 0b110 and self.rp == 0b110): #A <- A | mem[HL]
             tmpA = self.reg.getReg(self.reg.RegA)
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA | tmp)
+            res = tmpA | tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 0)
 
         elif(self.opcode == 2  and self.r == 0b101 and self.rp != 0b110): #A <- A xor rp
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp = self.reg.getReg(self.rp)
-            self.reg.setReg(self.reg.RegA, tmpA ^ tmp)
+            res = tmpA ^ tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 0)
 
         elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b110): #A <- A xor n
             tmpA = self.reg.getReg(self.reg.RegA)
             self.fetch()
             self.decode()
-            self.reg.setReg(self.reg.RegA, tmpA ^ self.n)
+            res = tmpA ^ self.n
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 0)
 
         elif(self.opcode == 2 and self.r == 0b101 and self.rp == 0b110): #A <- A xor mem[HL]
             tmpA = self.reg.getReg(self.reg.RegA)
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.reg.setReg(self.reg.RegA, tmpA ^ tmp)
+            res = tmpA ^ tmp
+            self.reg.setReg(self.reg.RegA, res)
+
+            self.reg.setFlag('z', 1 if res == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('cy', 0)
+            self.reg.setFlag('h', 0)
 
         elif(self.opcode == 2 and self.r == 0b111 and self.rp != 0b110): #A == rp
+            #"Compares the contents and sets flag if they are equal" <- not exactly a helpful description...
             tmpA = self.reg.getReg(self.reg.RegA)
             tmp == self.reg.getReg(self.rp)
-            #TODO: I need to set flags here, which I don't have set up
+
+            self.reg.setFlag('z', 1 if tmpA == tmp else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if tmpA < tmp else 0)
+            self.reg.setFlag('h', 1 if tmpA > tmp else 0)
 
         elif(self.opcode == 3 and self.r == 0b111 and self.rp == 0b110): #A == n
             tmpA == self.reg.getReg(self.reg.RegA)
             self.fetch()
             self.decode()
-            #TODO: Setting flags
+
+            self.reg.setFlag('z', 1 if tmpA == tmp else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if tmpA < tmp else 0)
+            self.reg.setFlag('h', 1 if tmpA > tmp else 0)
 
         elif(self.opcode == 2 and self.r == 0b111 and self.rp == 0b110): #A == mem[HL]
             tmpA == self.reg.getReg(self.reg.RegA)
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            #TODO: Setting flags
+
+            self.reg.setFlag('z', 1 if tmpA == tmp else 0)
+            self.reg.setFlag('n', 1)
+            self.reg.setFlag('cy', 1 if tmpA < tmp else 0)
+            self.reg.setFlag('h', 1 if tmpA > tmp else 0)
 
         elif(self.opcode == 0 and self.r != 0b110 and self.rp == 0b100): #r <- r + 1
             tmp == self.reg.getReg(self.r)
-            self.reg.setReg(self.r, tmp + 1)
+            res = tmp + 1
+            self.reg.setReg(self.r, res)
+
+            self.reg.setFlag('z', 1 if tmp == 0 else 0)
+            self.reg.setFlag('n', 0)
+            tmp4 = (tmp & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ res4)
 
         elif(self.opcode == 0 and self.r == 0b110 and self.rp == 0b100): #mem[HL] <- mem[HL] + 1
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
-            self.mem.write(memaddr, tmp + 1)
+            res = tmp + 1
+            self.mem.write(memaddr, res)
+
+            self.reg.setFlag('z', 1 if tmp == 0 else 0)
+            self.reg.setFlag('n', 0)
+            tmp4 = (tmp & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ res4)
 
         elif(self.opcode == 0 and self.r != 0b110 and self.rp == 0b101): #r <- r - 1
             tmp == self.reg.getReg(self.r)
-            self.reg.setReg(self.r, tmp - 1)
+            res = tmp - 1
+            self.reg.setReg(self.r)
+
+            self.reg.setFlag('z', 1 if tmp == 0 else 0)
+            self.reg.setFlag('n', 1)
+            tmp4 = (tmp & 0b1000) >> 3
+            res4 = (res & 0b1000) >> 3
+            self.reg.setFlag('h', tmp4 ^ res4)
 
         elif(self.opcode == 0 and self.r == 0b110 and self.rp == 0b101): #mem[HL] <- mem[HL] - 1
             memaddr = self.reg.getPair("hl")
