@@ -716,7 +716,7 @@ class CPU():
             res = tmp - 1
             self.reg.setReg(self.r)
 
-            self.reg.setFlag('z', 1 if tmp == 0 else 0)
+            self.reg.setFlag('z', 1 if res == 0 else 0)
             self.reg.setFlag('n', 1)
             tmp4 = (tmp & 0b1000) >> 3
             res4 = (res & 0b1000) >> 3
@@ -726,6 +726,11 @@ class CPU():
             memaddr = self.reg.getPair("hl")
             tmp = self.mem.read(memaddr)
             self.mem.write(memaddr, tmp - 1)
+
+            self.reg.setFlag('z', 1 if tmp == 1 else 0)
+            self.reg.setFlag('n', 1)
+            tmpbottom = tmp & 0b111
+            self.reg.setFlag('h', 1 if tmpbottom == 0 else 0)
 
         #16 bit arithmatic operations
         elif(self.opcode == 0 and self.r % 2 == 1 and self.rp == 0b001): #HL <- HL + ss
@@ -738,13 +743,31 @@ class CPU():
                 tmp = self.reg.getPair("hl")
             elif(self.r == 0b111):
                 tmp = self.reg.getPair("sp")
-            self.reg.setPair("hl", tmpHL + tmp)
+            res = tmpHL + tmp
+            self.reg.setPair("hl", res)
+
+            self.reg.setFlag('n', 0)
+            tmp11 = (tmp >> 10) & 0b1
+            res11 = (res >> 10) & 0b1
+            tmpHL11 (tmpHL >> 10) & 0b1
+            self.reg.setFlag('h', tmp11 ^ res11 ^ tmpHL11)
+            self.reg.setFlag('cy', res >> 15)
 
         elif(self.opcode == 3 and self.r == 0b101 and self.rp == 0b000): #SP <- SP + n
             tmpSL = self.reg.getReg("sp")
             self.fetch()
             self.decode()
-            self.reg.setPair("sp", tmpSL + self.n)
+            tmp = self.n
+            res = tempSL + tmp
+            self.reg.setPair("sp", res)
+
+            self.reg.setFlag('z', 0)
+            self.reg.setFlag('n', 0)
+            tmp11 = (tmp >> 10) & 0b1
+            res11 = (res >> 10) & 0b1
+            tmpSL11 (tmpHL >> 10) & 0b1
+            self.reg.setFlag('h', tmp11 ^ res11 ^ tmpSL11)
+            self.reg.setFlag('cy', res >> 15)
 
         elif(self.opcode == 0 and self.r%2 == 0 and self.rp == 0b011): #ss <- ss + 1
             if(self.r == 0b000):
@@ -757,7 +780,7 @@ class CPU():
                 pair = "sp"
 
             tmp = self.reg.getPair(pair)
-            self.reg.setPair(pair, tmp + 1)
+            self.reg.setPair(pair, tmp + 1) #No flags get changed
 
         elif(self.opcode == 0 and self.r%2 == 1 and self.rp == 0b011): #ss <- ss - 1
             if(self.r == 0b001):
@@ -777,29 +800,41 @@ class CPU():
             tmpA = self.reg.getReg(self.reg.RegA)
             bit = (tmpA & 0b10000000) >> 7
             tmpA = (tmpA << 1) + bit
-            self.reg.cy = bit
+            self.reg.setFlag('cy', bit)
             self.reg.setReg(self.reg.RegA, tmpA)
+            self.reg.setFlag('z', 0)
+            self.reg.setFlag('h', 0)
+            self.reg.setFlag('n', 0)
 
         elif(self.opcode == 0 and self.r == 0b010 and self.rp == 0b111): #A << 1 + A[7]
             tmpA = self.reg.getReg(self.reg.RegA)
             bit = (tmpA & 0b10000000) >> 7
             tmpA = (tmpA << 1) | self.reg.cy
-            self.reg.cy = bit
+            self.reg.setFlag('cy', bit)
             self.reg.setReg(self.reg.RegA, tmpA)
+            self.reg.setFlag('z', 0)
+            self.reg.setFlag('h', 0)
+            self.reg.setFlag('n', 0)
 
         elif(self.opcode == 0 and self.r == 0b001 and self.rp == 0b111): #A >> 1 + (A[0] << 7)
             tmpA = self.reg.getReg(self.reg.RegA)
             bit = tmpA & 0b01
             tmpA = (tmpA >> 1) | (bit << 7)
-            self.reg.cy = bit
+            self.reg.setFlag('cy', bit)
             self.reg.setReg(self.reg.RegA, tmpA)
+            self.reg.setFlag('z', 0)
+            self.reg.setFlag('h', 0)
+            self.reg.setFlag('n', 0)
 
         elif(self.opcode == 0 and self.r == 0b011 and self.rp == 0b111): #A >> 1 + (A[0] << 7)
             tmpA = self.reg.getReg(self.reg.RegA)
             bit = tmpA & 0b01
             tmpA = (tmpA >> 1) | (self.reg.cy << 7)
-            self.reg.cy = bit
+            self.reg.setFlag('cy', bit)
             self.reg.setReg(self.reg.RegA, tmpA)
+            self.reg.setFlag('z', 0)
+            self.reg.setFlag('h', 0)
+            self.reg.setFlag('n', 0)
 
         elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b011): #rshifts of r or (HL)
             self.fetch()
@@ -809,70 +844,70 @@ class CPU():
                     tmp = self.reg.getReg(self.rp)
                     bit = (tmp & 0b10000000) >> 7
                     tmp = (tmp << 1) | bit
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl")
                     tmp = self.mem.read(memaddr)
                     bit = (tmp & 0b10000000) >> 7
                     tmp = (tmp << 1) | bit
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b010):
                 if(self.rp != 0b110):
                     tmp = self.reg.getReg(self.rp)
                     bit = (tmp & 0b10000000) >> 7
                     tmp = (tmp << 1) | self.reg.cy
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl")
                     tmp = self.mem.read(memaddr)
                     bit = (tmp & 0b10000000) >> 7
                     tmp = (tmp << 1) | self.reg.cy
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b001):
                 if(self.rp != 0b110):
                     tmp = self.reg.getReg(self.rp)
                     bit = (tmp & 0b01)
                     tmp = (tmp >> 1) | (bit << 7)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl")
                     tmp = self.mem.read(memaddr)
                     bit = tmp & 0b01
                     tmp = (tmp >> 1) | (bit << 7)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b011):
                 if(self.rp != 0b110):
                     tmp = self.reg.getReg(self.rp)
                     bit = (tmp & 0b01)
                     tmp = (tmp >> 1) | (self.reg.cy << 7)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl") #NOTE: so this is not what the manual said the opcode was, but the manual seems wrong. so if there weird issues later it could be this
                     tmp = self.mem.read(memaddr)
                     bit = tmp & 0b01
                     tmp = (tmp >> 1) | (self.reg.cy << 7)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b100):
                 if(self.rp != 0b110):
                     tmp = self.reg.getReg(self.rp)
                     bit = (tmp & 0b10000000) >> 7
                     tmp = (tmp << 1)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl")
                     tmp = self.mem.read(memaddr)
                     bit = (tmp & 0b10000000) >> 7
                     tmp = (tmp << 1)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b101):
                 if(self.rp != 0b110):
@@ -880,7 +915,7 @@ class CPU():
                     bitL = (tmp & 0b01)
                     bitH = tmp & 0b10000000
                     tmp = (tmp >> 1) | bitH
-                    self.reg.cy = bitL
+                    self.reg.setFlag('cy', bitL)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl")
@@ -888,21 +923,21 @@ class CPU():
                     bitL = tmp & 0b01
                     bitH = tmp & 0b10000000
                     tmp = (tmp >> 1) | bitH
-                    self.reg.cy = bitL
+                    self.reg.setFlag('cy', bitL)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b111):
                 if(self.rp != 0b110):
                     tmp = self.reg.getReg(self.rp)
                     bit = (tmp & 0b01)
                     tmp = (tmp >> 1)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.reg.setReg(self.rp, tmp)
                 else:
                     memaddr = self.reg.getPair("hl")
                     tmp = self.mem.read(memaddr)
                     bit = tmp & 0b01
                     tmp = (tmp >> 1)
-                    self.reg.cy = bit
+                    self.reg.setFlag('cy', bit)
                     self.mem.write(memaddr, tmp)
             elif(self.r == 0b110):
                 if(self.rp != 0b110):
@@ -911,6 +946,7 @@ class CPU():
                     high4 = (tmp & 0b11110000)
                     tmp = (low4 << 4) | (high4 >> 4)
                     self.reg.setReg(self.rp, tmp)
+                    self.reg.setFlag('cy', 0)
                 else:
                     memaddr = self.reg.getPair("hl")
                     tmp = self.mem.read(memaddr)
@@ -918,12 +954,16 @@ class CPU():
                     high4 = (tmp & 0b11110000)
                     tmp = (low4 << 4) | (high4 >> 4)
                     self.mem.write(memaddr, tmp)
+                    self.reg.setFlag('cy', 0)
+            self.reg.setFlag('z', 1 if tmp == 0 else 0)
+            self.reg.setFlag('n', 0)
+            self.reg.setFlag('h', 0)
 
         #Bit operations
         elif(self.opcode == 3 and self.r == 0b001 and self.rp == 0b011):
             self.fetch()
             self.decode()
-            if(self. opcode == 1 and self.rp != 0b110): #move selected bit to the Zero flags
+            if(self. opcode == 1 and self.rp != 0b110): #move compliment of selected bit to the Zero flags
                 tmp = self.reg.getReg(self.rp)
                 if(self.r == 0b000):
                     bit = tmp & 0b00000001
@@ -941,8 +981,10 @@ class CPU():
                     bit = (tmp & 0b01000000) >> 6
                 elif(self.r == 0b111):
                     bit = (tmp & 0b10000000) >> 7
-                self.reg.z = bit #TODO: implement this...
-            elif(self.opcode == 1 and self.rp == 0b110): #move selected bit to the Zero flags
+                self.reg.setFlag('z', ~bit)
+                self.reg.setFlag('h', 1)
+                self.reg.setFlag('n', 0)
+            elif(self.opcode == 1 and self.rp == 0b110): #move compliment of selected bit to the Zero flags
                 memaddr = self.reg.getPair("hl")
                 tmp = self.mem.read(memaddr)
                 if(self.r == 0b000):
@@ -961,7 +1003,9 @@ class CPU():
                     bit = (tmp & 0b01000000) >> 6
                 elif(self.r == 0b111):
                     bit = (tmp & 0b10000000) >> 7
-                self.reg.z = bit #TODO: implement this...
+                self.reg.setFlag('z', ~bit)
+                self.reg.setFlag('h', 1)
+                self.reg.setFlag('n', 0)
             elif(self.opcode == 3 and self.rp != 0.110): #set bit to 1
                 tmp = self.reg.getReg(self.rp)
                 if(self.r == 0b000):
