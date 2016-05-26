@@ -7,6 +7,6 @@ TODO:
 - [ ] Implement Memory
 - [ ] Read in File
 - [ ] Graphical Output
-- [ ] Implement Instruction Set
+- [x] Implement Instruction Set
 - [ ] Audio
 - [ ] I ignore all of the flags
