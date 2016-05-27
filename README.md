@@ -9,4 +9,4 @@ TODO:
 - [ ] Graphical Output
 - [x] Implement Instruction Set
 - [ ] Audio
-- [ ] I ignore all of the flags
+- [x] I ignore all of the flags

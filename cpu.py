@@ -436,7 +436,7 @@ class CPU():
             self.reg.setFlag('n', 0)
             self.reg.setFlag('cy', res >> 8)
             tmp4 = (tmp & 0b1000) >> 3
-            A4 = (regA & 0b1000) >> 3
+            A4 = (tmpA & 0b1000) >> 3
             res4 = (res & 0b1000) >> 3
             self.reg.setFlag('h', tmp4 ^ A4 ^ res4)
 
@@ -758,14 +758,14 @@ class CPU():
             self.fetch()
             self.decode()
             tmp = self.n
-            res = tempSL + tmp
+            res = tmpSL + tmp
             self.reg.setPair("sp", res)
 
             self.reg.setFlag('z', 0)
             self.reg.setFlag('n', 0)
             tmp11 = (tmp >> 10) & 0b1
             res11 = (res >> 10) & 0b1
-            tmpSL11 (tmpHL >> 10) & 0b1
+            tmpSL11 = (tmpSL >> 10) & 0b1
             self.reg.setFlag('h', tmp11 ^ res11 ^ tmpSL11)
             self.reg.setFlag('cy', res >> 15)
 
@@ -1264,12 +1264,17 @@ class CPU():
         elif(self.opcode == 0 and self.r == 0b101 and self.rp == 0b111): #invert
             tmp = self.reg.getReg(self.reg.RegA)
             self.reg.setReg(self.reg.RegA, ~tmp)
+            self.reg.setFlag('h', 1)
+            self.reg.setFlag('n', 1)
 
         elif(self.opcode == 0 and self.r == 0b000 and self.rp == 0b000): #NOP
             pass
 
         elif(self.opcode == 1 and self.r == 0b110 and self.rp == 0b110): #Halt
-            #Not finished... need to handle pushing pc
+            #I think this works... 
+            memaddr = self.reg.getReg('sp')
+            self.mem.write(memaddr + 1, pc & 0b11111111)
+            self.mem.write(memaddr + 2, pc >> 8)
             return -2
 
         elif(self.opcode == 0 and self.r == 0b010 and self.rp == 0b000): #stop
@@ -1281,7 +1286,9 @@ class CPU():
 
         elif(self.opcode == 0 and self.r == 0b100 and self.rp == 0b111): #binary coded decimal adjustment
             self.reg.setReg(self.reg.RegA, self.bcd)
-            self.reg.cy = self.bcdcy
+            self.reg.setFlag('cy', self.bcdcy)
+            self.reg.setFlag('h', 0)
+            self.reg.setFlag('z', 1 if self.bcd == 0 else 0)
 
         self.prev = self.inst
         print(self.opcode, self.r, self.rp, self.n)
