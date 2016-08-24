@@ -4,8 +4,8 @@ A Gameboy emulator written in python purely for educational purposes. It is not 
 Referencing the Documentation found [here](https://github.com/ikkentim/GBEmmy/raw/master/ref/GameBoyProgrammingManual.pdf).
 
 TODO:
-- [ ] Implement Memory
-- [ ] Read in File
+- [x] Implement Memory
+- [x] Read in File
 - [ ] Graphical Output
 - [x] Implement Instruction Set
 - [ ] Audio

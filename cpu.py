@@ -160,7 +160,7 @@ class CPU():
 
     def execute(self):
         #8-bit load instructions
-        if(self.opcode == 1 and self.r != 0b110 and self.rb != 0b110): #load instruction r <- rp
+        if(self.opcode == 1 and self.r != 0b110 and self.rp != 0b110): #load instruction r <- rp
             tmp = self.reg.getReg(self.rp)
             self.reg.setReg(self.r, tmp)
 
@@ -483,8 +483,8 @@ class CPU():
             self.reg.setFlag('n', 1)
             self.reg.setFlag('cy', 1 if (tmpA >> 7) == 0 and (tmp >> 7) == 1 else 0) #check for borrowing
             tmp4 = (tmp & 0b100) >> 2
-            A4 = (regA & 0b100) >> 2
-            self.reg.setFlag('h', 1 if a4 == 0 and tmp4 == 1 else 0) #borrow from bit four
+            A4 = (self.reg.RegA & 0b100) >> 2
+            self.reg.setFlag('h', 1 if A4 == 0 and tmp4 == 1 else 0) #borrow from bit four
 
         elif(self.opcode == 3 and self.r == 0b010 and self.rp == 0b110): #A <- A - n
             tmpA = self.reg.getReg(self.reg.RegA)
@@ -712,9 +712,9 @@ class CPU():
             self.reg.setFlag('h', tmp4 ^ res4)
 
         elif(self.opcode == 0 and self.r != 0b110 and self.rp == 0b101): #r <- r - 1
-            tmp == self.reg.getReg(self.r)
+            tmp = self.reg.getReg(self.r)
             res = tmp - 1
-            self.reg.setReg(self.r)
+            self.reg.setReg(self.r, res)
 
             self.reg.setFlag('z', 1 if res == 0 else 0)
             self.reg.setFlag('n', 1)
@@ -1271,7 +1271,7 @@ class CPU():
             pass
 
         elif(self.opcode == 1 and self.r == 0b110 and self.rp == 0b110): #Halt
-            #I think this works... 
+            #I think this works...
             memaddr = self.reg.getReg('sp')
             self.mem.write(memaddr + 1, pc & 0b11111111)
             self.mem.write(memaddr + 2, pc >> 8)
@@ -1292,6 +1292,7 @@ class CPU():
 
         self.prev = self.inst
         print(self.opcode, self.r, self.rp, self.n)
+        return 0
 
     def BCDCalc(add, n, cy, h, A): #calculate what the BCD Result would be if needed. return A, CY
         low == A & 0b1111
@@ -1340,39 +1341,13 @@ class Memory():
         self.mem = [0] * 0xFFFF #Create an array the size of the GameBoy's memory
 
     def read(self, address):
-        if(address > 0xFFFF):
+        if(address > 0xFFFE):
             raise ValueError("Address out of memory")
         else:
             return self.mem[address]
 
     def write(self, address, value):
-        if (address > 0xFFFF):
+        if (address > 0xFFFE):
             raise ValueError("Address out of memory")
         else:
             self.mem[address] = value
-
-x = Registers()
-cp = CPU()
-print(x.getReg(0b000))
-x.setReg(0b000, 5)
-print(x.getReg(0b000))
-print(x.getPair("bc"))
-inst = 192
-print((inst&192) >> 6)
-cp.setInst(34)
-print(cp.inst)
-cp.decode()
-print(cp.opcode)
-print(cp.mem.read(258))
-cp.mem.write(258, 140)
-print(cp.mem.read(258))
-
-cp.setInst(0b11101000)
-cp.decode()
-cp.execute()
-
-for i in range(6): #instructions start at 256
-    cp.fetch()
-    cp.decode()
-    cp.execute()
-#print(m.read(0xFFFFF))
